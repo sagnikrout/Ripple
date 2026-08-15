@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Ripple — Tiered WebRTC & Decentralized Mesh Messenger</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <!-- Device Switcher & Transport Priority Top Bar -->
+    <header class="device-switcher-bar">
+        <div class="device-switcher-left">
+            <div class="brand-badge">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+                <span>RIPPLE</span>
+            </div>
+            <div class="device-pill-group">
+                <button id="btnDevice1" class="device-pill-btn active" onclick="switchDevice('node1')">📱 Node 1 (Alice)</button>
+                <button id="btnDevice2" class="device-pill-btn" onclick="switchDevice('node2')">📱 Node 2 (Bob)</button>
+                <button id="btnSplitView" class="device-pill-btn" onclick="toggleSplitView()">🔀 Split View</button>
+            </div>
+        </div>
+        <div class="device-switcher-right">
+            <button id="btnToggleTransport" class="action-btn" style="padding:4px 10px; font-size:0.75rem;" onclick="toggleTransportMode()">
+                <span id="transportBadgeIcon">⚡</span>
+                <span id="transportBadgeText">Tier 1: WebRTC</span>
+            </button>
+            <div class="mesh-status-indicator">
+                <div class="pulse-dot" id="radioPulseDot"></div>
+                <span id="meshRadioText">WebRTC Ready</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- App Main Container -->
+    <main class="app-container" id="appMainContainer">
+        
+        <!-- Left Sidebar: Conversations & Contacts -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="user-identity-card">
+                    <div class="user-avatar" id="myAvatar">A</div>
+                    <div class="user-details">
+                        <span class="user-slug-name" id="mySlugName">calm-raman-lucario</span>
+                        <span class="user-address-sub" id="myAddressShort">9b42b774...</span>
+                    </div>
+                </div>
+                <div class="search-bar-container">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="searchInput" class="search-input" placeholder="Search conversations...">
+                </div>
+            </div>
+
+            <div class="conversations-list" id="conversationsList">
+                <!-- Injected via JavaScript -->
+            </div>
+        </aside>
+
+        <!-- Right Main: Active SMS Conversation -->
+        <section class="chat-main">
+            <!-- Chat Header -->
+            <div class="chat-header">
+                <div class="chat-contact-info">
+                    <div class="convo-avatar" id="activeChatAvatar">B</div>
+                    <div>
+                        <div class="chat-header-name" id="activeChatName">swift-turing-pikachu</div>
+                        <div class="chat-header-status">
+                            <span class="pulse-dot" style="width:6px; height:6px;"></span>
+                            <span id="activeChatAddress">WebRTC P2P Linked (Fallback: BLE Mesh)</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="chat-header-actions">
+                    <button class="action-btn" onclick="openRadarModal()"><span>📡</span> Radar</button>
+                    <button class="action-btn" onclick="openAcousticModal()"><span>🔊</span> Audio</button>
+                    <button class="action-btn" onclick="openQrModal()"><span>📷</span> QR</button>
+                </div>
+            </div>
+
+            <!-- Messages Stream -->
+            <div class="messages-viewport" id="messagesViewport">
+                <div class="time-divider">Tier 1: WebRTC Direct P2P ➔ Tier 2: Wi-Fi Direct ➔ Tier 3: BLE GATT Mesh</div>
+            </div>
+
+            <!-- PoW Mining Live Status Banner -->
+            <div class="pow-mining-banner" id="powMiningBanner" style="display: none;">
+                <span id="powBannerText">⚡ Mining 10-bit Hashcash Proof-of-Work...</span>
+                <span id="powBannerNonce">Nonce: 0</span>
+            </div>
+
+            <!-- Input Area -->
+            <div class="chat-input-area">
+                <textarea id="messageInput" class="chat-input-box" placeholder="Type message (WebRTC First, auto-fallback to BLE)..." rows="1"></textarea>
+                <button class="send-btn" id="sendBtn" onclick="handleSendMessage()" title="Send Encrypted DTN Packet">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal: Neighbor Radar & Diagnostics -->
+    <div class="modal-overlay" id="radarModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">📡 Live 1-Hop Neighbor Radar</span>
+                <button class="modal-close-btn" onclick="closeModal('radarModal')">&times;</button>
+            </div>
+            <div class="radar-list" id="radarList">
+                <div class="radar-item">
+                    <div>
+                        <div class="radar-name">swift-turing-pikachu (Bob)</div>
+                        <div style="font-size:0.75rem; color:var(--accent-emerald);">⚡ Tier 1: WebRTC DataChannel (Active, <2ms)</div>
+                    </div>
+                    <div class="radar-rssi">-42 dBm</div>
+                </div>
+                <div class="radar-item">
+                    <div>
+                        <div class="radar-name">DataMule_Dave (Relay)</div>
+                        <div style="font-size:0.75rem; color:var(--text-muted);">📡 Tier 3: BLE GATT Standby</div>
+                    </div>
+                    <div class="radar-rssi">-72 dBm</div>
+                </div>
+            </div>
+            <div style="margin-top:8px; font-size:0.8rem; color:var(--text-muted);">
+                Transit Queue Storage: <span style="color:var(--text-primary); font-weight:600;">18.4 KB / 50 MB (0.03%)</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Ultrasonic Acoustic Modem -->
+    <div class="modal-overlay" id="acousticModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">🔊 Ultrasonic Acoustic Modem (18–20 kHz)</span>
+                <button class="modal-close-btn" onclick="closeModal('acousticModal')">&times;</button>
+            </div>
+            <canvas id="audioCanvas"></canvas>
+            <div style="display:flex; gap:10px;">
+                <button class="action-btn" style="flex:1; justify-content:center; background:var(--bubble-sent); color:#fff;" onclick="playUltrasonicTone()">
+                    🔊 Transmit 18.5 kHz Acoustic Chirp
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Fountain QR Card -->
+    <div class="modal-overlay" id="qrModal">
+        <div class="modal-content" style="text-align:center;">
+            <div class="modal-header">
+                <span class="modal-title">📷 Animated Fountain QR Code</span>
+                <button class="modal-close-btn" onclick="closeModal('qrModal')">&times;</button>
+            </div>
+            <div id="qrCodeDisplay" style="background:#fff; padding:16px; border-radius:12px; display:inline-block; margin:0 auto;">
+                <canvas id="qrCanvas" width="200" height="200"></canvas>
+            </div>
+            <div style="font-size:0.75rem; color:var(--text-muted); margin-top:8px;" id="qrFrameCounter">
+                Streaming Frame: 3 / 10 (Seed: 4082)
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="crypto.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
