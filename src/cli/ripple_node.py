@@ -18,7 +18,7 @@ import socketserver
 import webbrowser
 import argparse
 
-BANNER = """
+BANNER = r"""
   ____  _             _      
  |  _ \(_)_ __  _ __ | | ___ 
  | |_) | | '_ \| '_ \| |/ _ \
@@ -74,7 +74,10 @@ def start_gui_server(port=8765):
         def log_message(self, format, *args):
             pass
 
-    server = socketserver.TCPServer(("127.0.0.1", port), Handler)
+    class ReusableTCPServer(socketserver.TCPServer):
+        allow_reuse_address = True
+
+    server = ReusableTCPServer(("127.0.0.1", port), Handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     url = f"http://127.0.0.1:{port}/"
     print(f"[*] SMS Messenger Web GUI server active at: {url}")

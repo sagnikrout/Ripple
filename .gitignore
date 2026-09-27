@@ -1,0 +1,19 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# PyInstaller / Build temp artifacts
+*.spec.bak
+*.toc
+*.pyz
+build/ripple/
+build/localpycs/
+
+# Environments & IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

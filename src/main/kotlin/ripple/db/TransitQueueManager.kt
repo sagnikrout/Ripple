@@ -7,10 +7,12 @@ import ripple.packet.BinaryPacket
  * Transit Queue Quota & Tiered Eviction Manager.
  * Enforces 50 MB / 5,000 bundle quota with deterministic eviction:
  * Stale -> High Hop -> Low PoW -> Unknown Contacts -> FIFO.
+ * Also enforces dynamic gossip fan-out limits (x) and epidemic ACK auto-purging.
  */
 class TransitQueueManager(
     val maxStorageBytes: Long = 50 * 1024 * 1024L, // 50 MB
-    val maxBundles: Int = 5000
+    val maxBundles: Int = 5000,
+    var defaultMaxFanOut: Int = 5 // Optimal x fan-out limit per bundle
 ) {
 
     data class TransitItem(
@@ -22,7 +24,8 @@ class TransitQueueManager(
         val hopCount: Int,
         val expiresAt: Long,
         val receivedAt: Long,
-        val isContact: Boolean
+        val isContact: Boolean,
+        var relayedCopies: Int = 0
     )
 
     private val queue = ConcurrentHashMap<String, TransitItem>()
@@ -31,6 +34,23 @@ class TransitQueueManager(
         enforceQuota(item.payloadSize.toLong())
         queue[item.messageId] = item
         return true
+    }
+
+    /**
+     * Records a successful peer relay transmission.
+     * Returns false if the bundle has reached its maximum fan-out x (e.g. 5 copies).
+     */
+    fun recordRelay(messageId: String, maxFanOut: Int = defaultMaxFanOut): Boolean {
+        val item = queue[messageId] ?: return false
+        item.relayedCopies++
+        return item.relayedCopies < maxFanOut
+    }
+
+    /**
+     * Purges message from transit queue upon delivery ACK confirmation.
+     */
+    fun onAckReceived(messageId: String): Boolean {
+        return queue.remove(messageId) != null
     }
 
     fun remove(messageId: String): TransitItem? {

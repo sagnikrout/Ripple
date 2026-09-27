@@ -26,7 +26,7 @@ import random
 from typing import List, Dict, Set, Optional, Tuple
 
 print("================================================================================")
-print("              RIPPLE PROTOCOL VERIFICATION & SIMULATION SUITE (v1.3)            ")
+print("              RIPPLE PROTOCOL VERIFICATION & SIMULATION SUITE                  ")
 print("================================================================================")
 
 def blake3_hash(data: bytes) -> bytes:

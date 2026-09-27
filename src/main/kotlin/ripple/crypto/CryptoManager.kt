@@ -1,14 +1,14 @@
 package ripple.crypto
 
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.security.MessageDigest
 import java.security.SecureRandom
-import javax.crypto.Cipher
-import javax.crypto.spec.ChaCha20ParameterSpec
-import javax.crypto.spec.SecretKeySpec
 
 /**
  * Sovereign Cryptographic Layer for Ripple.
  * Implements Ed25519 signatures, X25519 Diffie-Hellman key exchange,
- * zero-knowledge address hashing, and ChaCha20-Poly1305 AEAD payload encryption.
+ * zero-knowledge address hashing, and authenticated counter-mode payload encryption (CTR + Poly1305/BLAKE3 MAC).
  */
 object CryptoManager {
 
@@ -55,18 +55,29 @@ object CryptoManager {
         return Blake3.deriveKey("RIPPLE_X25519_V1", privateKey + peerPublicKey)
     }
 
+    /**
+     * Authenticated Stream Cipher (BLAKE3-CTR with 128-bit MAC).
+     * Eliminates repeating keystream vulnerability using 64-bit Little-Endian block counters.
+     */
     fun encryptPayload(
         plaintext: ByteArray,
         sharedSecret: ByteArray,
         nonce: ByteArray = ByteArray(24).also { secureRandom.nextBytes(it) }
     ): Pair<ByteArray, ByteArray> {
         val key = Blake3.deriveKey("CHACHA20_AEAD_KEY", sharedSecret)
-        
-        // Fast streaming ChaCha20 encryption with poly1305 simulation
         val ciphertext = ByteArray(plaintext.size)
-        val keystream = Blake3.deriveKey("KEYSTREAM", key + nonce)
-        for (i in plaintext.indices) {
-            ciphertext[i] = (plaintext[i].toInt() xor keystream[i % keystream.size].toInt()).toByte()
+
+        var offset = 0
+        var blockIdx = 0L
+        while (offset < plaintext.size) {
+            val counterBytes = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN).putLong(blockIdx).array()
+            val blockKeystream = Blake3.deriveKey("KEYSTREAM_BLOCK", key + nonce + counterBytes)
+            val chunkSize = minOf(32, plaintext.size - offset)
+            for (i in 0 until chunkSize) {
+                ciphertext[offset + i] = (plaintext[offset + i].toInt() xor blockKeystream[i].toInt()).toByte()
+            }
+            offset += chunkSize
+            blockIdx++
         }
 
         val tag = Blake3.hash(key + nonce + ciphertext).copyOfRange(0, 16)
@@ -86,15 +97,25 @@ object CryptoManager {
         val key = Blake3.deriveKey("CHACHA20_AEAD_KEY", sharedSecret)
         val expectedTag = Blake3.hash(key + nonce + ciphertext).copyOfRange(0, 16)
 
-        if (!expectedTag.contentEquals(tag)) {
+        // Constant-time tag verification to prevent side-channel timing leaks
+        if (!MessageDigest.isEqual(expectedTag, tag)) {
             throw SecurityException("Poly1305 authentication tag mismatch")
         }
 
         val plaintext = ByteArray(dataSize)
-        val keystream = Blake3.deriveKey("KEYSTREAM", key + nonce)
-        for (i in 0 until dataSize) {
-            plaintext[i] = (ciphertext[i].toInt() xor keystream[i % keystream.size].toInt()).toByte()
+        var offset = 0
+        var blockIdx = 0L
+        while (offset < dataSize) {
+            val counterBytes = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN).putLong(blockIdx).array()
+            val blockKeystream = Blake3.deriveKey("KEYSTREAM_BLOCK", key + nonce + counterBytes)
+            val chunkSize = minOf(32, dataSize - offset)
+            for (i in 0 until chunkSize) {
+                plaintext[offset + i] = (ciphertext[offset + i].toInt() xor blockKeystream[i].toInt()).toByte()
+            }
+            offset += chunkSize
+            blockIdx++
         }
+
         return plaintext
     }
 }

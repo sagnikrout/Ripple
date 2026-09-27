@@ -29,11 +29,7 @@ public class MainActivity extends Activity {
 
         // Start background mesh relay service
         Intent serviceIntent = new Intent(this, RippleForegroundService.class);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(serviceIntent);
-        } else {
-            startService(serviceIntent);
-        }
+        startForegroundService(serviceIntent);
 
         // Initialize WebView
         webView = new WebView(this);
